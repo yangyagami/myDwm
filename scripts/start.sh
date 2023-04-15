@@ -1,5 +1,6 @@
 #!/bin/zsh
 sh $HOME/scripts/status.sh &
+sh $HOME/scripts/wallpaper.sh &
 fcitx5 &
-picom --config=/etc/xdg/picom.conf &
+picom --config=$HOME/.config/picom/picom.conf &
 exec dwm
