@@ -1,0 +1,1 @@
+Xephyr -ac -br -screen 1024x768 -dpi 90 :1 &; sleep 1;DISPLAY=:1 ./dwm

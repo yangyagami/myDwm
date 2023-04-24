@@ -28,10 +28,19 @@ static const char col_nordfgSel[] = "#434C5E";
 static const char col_nordbgSel[] = "#88C0D0";
 static const char col_nordborderSel[] = "#88C0D0";
 
+/*dark theme*/
+static const char col_darkfg[] = "#EEEEEE";
+static const char col_darkbg[] = "#222831";
+static const char col_darkborder[] = "#393E46";
+
+static const char col_darkfgSel[] = "#EEEEEE";
+static const char col_darkbgSel[] = "#00ADB5";
+static const char col_darkborderSel[] = "#EEEEEE";
+
 static const char *colors[][3]      = {
 	/*               fg         bg         border   */
-	[SchemeNorm] = { col_nordfg, col_nordbg, col_nordborder },
-	[SchemeSel]  = { col_nordfgSel, col_nordbgSel,  col_nordborderSel  },
+	[SchemeNorm] = { col_darkfg, col_darkbg, col_darkborder },
+	[SchemeSel]  = { col_darkfgSel, col_darkbgSel,  col_darkborderSel  },
 };
 static const unsigned int alphas[][3]      = {
 	/*               fg      bg        border     */
