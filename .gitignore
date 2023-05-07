@@ -1,0 +1,17 @@
+config.def.h.orig
+config.h.orig
+config.def.h.orig
+config.def.h.rej
+config.h.orig
+config.h.rej
+config.mk.orig
+config.mk.rej
+drw.c.orig
+drw.c.rej
+drw.h.orig
+drw.h.rej
+dwm.c.orig
+dwm.c.rej
+dwm.o
+test.sh
+test.txt
