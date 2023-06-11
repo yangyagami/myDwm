@@ -21,6 +21,7 @@
  * To understand everything else, start reading main().
  */
 #include <errno.h>
+#include <time.h>
 #include <locale.h>
 #include <signal.h>
 #include <stdarg.h>
@@ -118,8 +119,6 @@ struct Monitor {
 	float mfact;
 	int nmaster;
 	int num;
-	int bw;
-	int bh;
 	int bx;
 	int by;               /* bar geometry */
 	int mx, my, mw, mh;   /* screen size */
@@ -273,6 +272,7 @@ static Atom wmatom[WMLast], netatom[NetLast];
 static int running = 1;
 static Cur *cursor[CurLast];
 static Clr **scheme;
+static Clr **status_scheme;
 static Display *dpy;
 static Drw *drw;
 static Monitor *mons, *selmon;
@@ -502,6 +502,8 @@ cleanup(void)
 		drw_cur_free(drw, cursor[i]);
 	for (i = 0; i < LENGTH(colors); i++)
 		free(scheme[i]);
+	for (i = 0; i < LENGTH(status_colors); i++)
+		free(status_scheme[i]);
 	XDestroyWindow(dpy, wmcheckwin);
 	drw_free(drw);
 	XSync(dpy, False);
@@ -720,9 +722,20 @@ drawbar(Monitor *m)
 
 	/* draw status first so it can be overdrawn by tags later */
 	if (m == selmon) { /* status is only drawn on selected monitor */
-		drw_setscheme(drw, scheme[SchemeNorm]);
-		tw = TEXTW(stext) - lrpad + 2; /* 2px right padding */
-		drw_text(drw, m->ww - tw - 2 * bargap, 0, tw, bh, 0, stext, 0);
+		const char *delim = "|";
+		char local_stext[256] = { 0 };
+		strcpy(local_stext, stext);
+		tw = TEXTW(local_stext) - lrpad + 2; /* 2px right padding */
+		int local_tx = m->ww - tw - 2 * bargap;
+		char *token = strtok(local_stext, delim);
+		while (token != NULL) {
+			int index = rand() % LENGTH(status_colors);
+			int local_tw = TEXTW(token);
+			drw_setscheme(drw, status_scheme[index]);
+			drw_text(drw, local_tx, 0, local_tw, bh, 0, token, 0);
+			local_tx += local_tw - TEXTW("");
+			token = strtok(NULL, delim);
+		}
 	}
 
 	for (c = m->clients; c; c = c->next) {
@@ -1561,6 +1574,10 @@ setup(void)
 	int i;
 	XSetWindowAttributes wa;
 	Atom utf8string;
+	time_t t;
+
+	/*init rand*/
+	srand((unsigned) time(&t));
 
 	/* clean up any zombies immediately */
 	sigchld(0);
@@ -1600,6 +1617,10 @@ setup(void)
 	scheme = ecalloc(LENGTH(colors), sizeof(Clr *));
 	for (i = 0; i < LENGTH(colors); i++)
 		scheme[i] = drw_scm_create(drw, colors[i], alphas[i], 3);
+
+	status_scheme = ecalloc(LENGTH(status_colors), sizeof(Clr *));
+	for (i = 0; i < LENGTH(status_colors); i++)
+		status_scheme[i] = drw_scm_create(drw, status_colors[i], alphas[0], 3);
 	/* init bars */
 	updatebars();
 	updatestatus();
@@ -1738,7 +1759,7 @@ togglebar(const Arg *arg)
 {
 	selmon->showbar = !selmon->showbar;
 	updatebarpos(selmon);
-	XMoveResizeWindow(dpy, selmon->barwin, selmon->bx, selmon->by, selmon->bw, bh);
+	XMoveResizeWindow(dpy, selmon->barwin, selmon->bx, selmon->by, blw, bh);
 	arrange(selmon);
 }
 
@@ -1850,7 +1871,7 @@ updatebars(void)
 	for (m = mons; m; m = m->next) {
 		if (m->barwin)
 			continue;
-		m->barwin = XCreateWindow(dpy, root, m->bx, m->by, m->bw, bh, 0, depth,
+		m->barwin = XCreateWindow(dpy, root, m->bx, m->by, blw, bh, 0, depth,
 		                          InputOutput, visual,
 		                          CWOverrideRedirect|CWBackPixel|CWBorderPixel|CWColormap|CWEventMask, &wa);
 		XDefineCursor(dpy, m->barwin, cursor[CurNormal]->cursor);
@@ -1866,12 +1887,13 @@ updatebarpos(Monitor *m)
 	m->wh = m->mh;
 	if (m->showbar) {
 		m->bx = bargap;
-		m->by = m->topbar ? m->wy + bargap : m->wy + m->wh + bargap;
-		m->bw = m->ww - 2 * bargap;
+		m->by = m->topbar ? m->wy + bargap : m->mh - bargap - bh;
+		blw = m->ww - 2 * bargap;
 		m->wy = m->topbar ? m->wy + bh + bargap : m->wy;
 		m->wh = m->wh - bh - bargap;
-	} else
+	} else {
 		m->by = -bh - bargap;
+	}
 }
 
 void

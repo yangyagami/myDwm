@@ -7,8 +7,8 @@ static const unsigned int gappx     	= 10;        /* gap pixel between windows *
 static const unsigned int borderpx  	= 3;        /* border pixel of windows */
 static const unsigned int snap      	= 32;       /* snap pixel */
 static const int showbar            	= 1;        /* 0 means no bar */
-static const int topbar             	= 1;        /* 0 means bottom bar */
-static const char *fonts[]          	= { "FontAwesome:pixelsize=24:antialias=true:autohint=true" };
+static const int topbar             	= 0;        /* 0 means bottom bar */
+static const char *fonts[]          	= { "FontAwesome:pixelsize=18:antialias=true:autohint=true" };
 static const char dmenufont[]       	= "Sauce Code Pro Nerd Font Mono:size=14";
 static const char col_gray1[]       	= "#222222";
 static const char col_gray2[]       	= "#444444";
@@ -30,13 +30,21 @@ static const char col_nordborderSel[] = "#88C0D0";
 
 /*dark theme*/
 static const char col_darkfg[] = "#EEEEEE";
-static const char col_darkbg[] = "#222831";
-static const char col_darkborder[] = "#393E46";
+static const char col_darkbg[] = "#1E222B";
+static const char col_darkborder[] = "#1E222B";
 
-static const char col_darkfgSel[] = "#EEEEEE";
-static const char col_darkbgSel[] = "#00ADB5";
-static const char col_darkborderSel[] = "#EEEEEE";
+static const char col_darkfgSel[] = "#83A4C7";
+static const char col_darkbgSel[] = "#282C37";
+static const char col_darkborderSel[] = "#83A4C7";
 
+/*status theme*/
+static const char *status_colors[][3] = {
+	/*               fg         bg         border   */
+	{"#8BACAA", col_darkbg, col_darkborder},
+	{"#B04759", col_darkbg, col_darkborder},
+	{"#E76161", col_darkbg, col_darkborder},
+	{"#F99B7D", col_darkbg, col_darkborder},
+};
 static const char *colors[][3]      = {
 	/*               fg         bg         border   */
 	[SchemeNorm] = { col_darkfg, col_darkbg, col_darkborder },
@@ -49,7 +57,7 @@ static const unsigned int alphas[][3]      = {
 };
 
 /* tagging */
-static const char *tags[] = { "", "", "", "", "ﲵ", "", "", "", "" };
+static const char *tags[] = {"1", "2", "3", "4", "5"};
 
 static const Rule rules[] = {
 	/* xprop(1):
@@ -124,10 +132,6 @@ static Key keys[] = {
 	TAGKEYS(                        XK_3,                      2)
 	TAGKEYS(                        XK_4,                      3)
 	TAGKEYS(                        XK_5,                      4)
-	TAGKEYS(                        XK_6,                      5)
-	TAGKEYS(                        XK_7,                      6)
-	TAGKEYS(                        XK_8,                      7)
-	TAGKEYS(                        XK_9,                      8)
 	{ MODKEY|ShiftMask,             XK_q,      quit,           {0} },
 };
 
