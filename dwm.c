@@ -729,13 +729,17 @@ drawbar(Monitor *m)
 		tw = TEXTW(local_stext) - lrpad + 2; /* 2px right padding */
 		int local_tx = m->ww - tw - 2 * bargap;
 		char *token = strtok(local_stext, delim);
+		int index = 0;
 		while (token != NULL) {
-			int index = rand() % LENGTH(status_colors);
+			if (index >= LENGTH(status_colors)) {
+				index = 0;
+			}
 			int local_tw = TEXTW(token);
 			drw_setscheme(drw, status_scheme[index]);
 			drw_text(drw, local_tx, 0, local_tw, bh, 0, token, 0);
 			local_tx += local_tw - TEXTW("");
 			token = strtok(NULL, delim);
+			index++;
 		}
 	}
 
