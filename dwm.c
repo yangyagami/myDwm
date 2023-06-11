@@ -216,6 +216,7 @@ static void spawn(const Arg *arg);
 static void tag(const Arg *arg);
 static void tagmon(const Arg *arg);
 static void tile(Monitor *);
+static void overview_grid(Monitor *);
 static void togglebar(const Arg *arg);
 static void togglefloating(const Arg *arg);
 static void toggletag(const Arg *arg);
@@ -1752,6 +1753,35 @@ tile(Monitor *m)
 			if (ty + HEIGHT(c) + m->gappx < m->wh)
 				ty += HEIGHT(c) + m->gappx;
 		}
+}
+
+void
+overview_grid(Monitor *m) {
+	unsigned int n = 0, max_col = 5, count = 0, cw = 0, ch = 0, cx = 0, cy = 0, i = 0, row = 0, col = 0, current_col = 0, current_row = 0;
+	Client *c;
+	for (n = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), n++);
+	if (n == 0)
+		return;
+	for (c = nexttiled(m->clients); c; c = nexttiled(c->next)) {
+		count++;
+	}
+	row = count / max_col + 1;
+	col = count > max_col ? max_col : count;
+	cw = (m->ww - 2 * gappx - (col - 1) * gappx) / col;
+	ch = (m->wh - 2 * gappx - (row - 1) * gappx) / row;
+	for (c = nexttiled(m->clients); c; c = nexttiled(c->next)) {
+		if (current_col != 0 && current_col % max_col == 0) {
+			cx = gappx;
+			current_col = 0;
+			current_row++;
+		}
+
+		cx = current_col * cw + (current_col + 1) * gappx;
+		cy = current_row * ch + (current_row + 1) * gappx;
+		current_col++;
+
+		resize(c, cx, cy, cw - 2 * c->bw, ch - 2 * c->bw, 0);	
+	}
 }
 
 void

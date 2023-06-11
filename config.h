@@ -2,6 +2,7 @@
 
 
 /* appearance */
+#include <X11/X.h>
 static const unsigned int bargap     	= 10;        /* gap pixel between windows */
 static const unsigned int gappx     	= 10;        /* gap pixel between windows */
 static const unsigned int borderpx  	= 3;        /* border pixel of windows */
@@ -76,9 +77,10 @@ static const int resizehints = 1;    /* 1 means respect size hints in tiled resi
 
 static const Layout layouts[] = {
 	/* symbol     arrange function */
-	{ "平铺",      tile },    /* first entry is default */
-	{ "浮动",      NULL },    /* no layout function means floating behavior */
-	{ "[M]",      monocle },
+	{ "平铺",     tile          },    /* first entry is default */
+	{ "浮动",     NULL          },    /* no layout function means floating behavior */
+	{ "总览",     overview_grid },    /* no layout function means floating behavior */
+	{ "[M]",      monocle       },
 };
 
 /* key definitions */
@@ -113,9 +115,10 @@ static Key keys[] = {
 	{ MODKEY|ShiftMask,             XK_Return, zoom,           {0} },
 	{ MODKEY,                       XK_Tab,    view,           {0} },
 	{ MODKEY|ShiftMask,             XK_c,      killclient,     {0} },
+	{ MODKEY|ShiftMask,             XK_t,      setlayout,      {.v = &layouts[2]} },
 	{ MODKEY,                       XK_t,      setlayout,      {.v = &layouts[0]} },
 	{ MODKEY,                       XK_f,      setlayout,      {.v = &layouts[1]} },
-	{ MODKEY,                       XK_m,      setlayout,      {.v = &layouts[2]} },
+	{ MODKEY,                       XK_m,      setlayout,      {.v = &layouts[3]} },
 	{ MODKEY,                       XK_space,  setlayout,      {0} },
 	{ MODKEY|ShiftMask,             XK_space,  togglefloating, {0} },
 	{ MODKEY,                       XK_0,      view,           {.ui = ~0 } },
