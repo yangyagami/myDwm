@@ -183,6 +183,7 @@ static void grabkeys(void);
 static void incnmaster(const Arg *arg);
 static void keypress(XEvent *e);
 static void killclient(const Arg *arg);
+static void killallclients(const Arg *arg);
 static void manage(Window w, XWindowAttributes *wa);
 static void mappingnotify(XEvent *e);
 static void maprequest(XEvent *e);
@@ -1031,6 +1032,22 @@ keypress(XEvent *e)
 		&& CLEANMASK(keys[i].mod) == CLEANMASK(ev->state)
 		&& keys[i].func)
 			keys[i].func(&(keys[i].arg));
+}
+
+void
+killallclients(const Arg *arg) {
+	Client *c;
+	for (c = selmon->clients; c; c = c->next) {
+		if (!sendevent(c, wmatom[WMDelete])) {
+			XGrabServer(dpy);
+			XSetErrorHandler(xerrordummy);
+			XSetCloseDownMode(dpy, DestroyAll);
+			XKillClient(dpy, c->win);
+			XSync(dpy, False);
+			XSetErrorHandler(xerror);
+			XUngrabServer(dpy);
+		}
+	}
 }
 
 void
