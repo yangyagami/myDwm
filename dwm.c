@@ -244,6 +244,7 @@ static int xerrorstart(Display *dpy, XErrorEvent *ee);
 static void xinitvisual();
 static void xinitvisual();
 static void zoom(const Arg *arg);
+static void vertical(Monitor *);
 
 /* variables */
 static const char broken[] = "broken";
@@ -1777,15 +1778,38 @@ tile(Monitor *m)
 }
 
 void
-overview_grid(Monitor *m) {
-	unsigned int n = 0, max_col = 5, count = 0, cw = 0, ch = 0, cx = 0, cy = 0, i = 0, row = 0, col = 0, current_col = 0, current_row = 0;
+vertical(Monitor *m) 
+{
+	unsigned int min_h = 200, cw = m->ww - 2 * gappx, ch = 0, count = 0, index = 0, cy = 0;
 	Client *c;
-	for (n = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), n++);
-	if (n == 0)
+	for (count = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), count++);
+	if (count == 0)
 		return;
-	for (c = nexttiled(m->clients); c; c = nexttiled(c->next)) {
-		count++;
+	if (count > 1) {
+		ch = (m->wh - min_h - gappx) / (count - 1);
+	} else {
+		ch = m->wh - gappx;
 	}
+
+	cy = gappx;
+	for (c = nexttiled(m->clients); c; c = nexttiled(c->next)) {
+		if (index == count - 1 && index != 0) {
+			ch = min_h;
+		}
+		resize(c, m->wx + gappx, cy, cw - 2 * c->bw, ch - 2 * c->bw - m->gappx, 0);	
+		index++;
+		cy += HEIGHT(c) + m->gappx;
+	}
+}
+
+void
+overview_grid(Monitor *m) 
+{
+	unsigned int max_col = 5, count = 0, cw = 0, ch = 0, cx = 0, cy = 0, i = 0, row = 0, col = 0, current_col = 0, current_row = 0;
+	Client *c;
+	for (count = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), count++);
+	if (count == 0)
+		return;
 	row = count / max_col + 1;
 	col = count > max_col ? max_col : count;
 	cw = (m->ww - 2 * gappx - (col - 1) * gappx) / col;
