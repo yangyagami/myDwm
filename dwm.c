@@ -1615,7 +1615,8 @@ setup(void)
 	if (!drw_fontset_create(drw, fonts, LENGTH(fonts)))
 		die("no fonts could be loaded.");
 	lrpad = drw->fonts->h;
-	bh = drw->fonts->h + 2;
+	// bh = drw->fonts->h + 2;
+	bh = drw->fonts->h + 10;
 	updategeom();
 	/* init atoms */
 	utf8string = XInternAtom(dpy, "UTF8_STRING", False);
@@ -1768,7 +1769,7 @@ tile(Monitor *m)
 		} else {
 			r = n - i;
 			h = (m->wh - ty) / (n - i);
-			if (i == n - 1) 
+			if (i == n - 1)
 				resize(c, m->wx + mw + m->gappx, m->wy + ty, m->ww - mw - (2*c->bw) - 2 * m->gappx, h - (2*c->bw) - m->gappx, 0);
 			else
 				resize(c, m->wx + mw + m->gappx, m->wy + ty, m->ww - mw - (2*c->bw) - 2 * m->gappx, h - (2*c->bw), 0);
@@ -1778,7 +1779,7 @@ tile(Monitor *m)
 }
 
 void
-vertical(Monitor *m) 
+vertical(Monitor *m)
 {
 	unsigned int min_h = 200, cw = m->ww - 2 * gappx, ch = 0, count = 0, index = 0, cy = 0;
 	Client *c;
@@ -1796,14 +1797,14 @@ vertical(Monitor *m)
 		if (index == count - 1 && index != 0) {
 			ch = min_h;
 		}
-		resize(c, m->wx + gappx, cy, cw - 2 * c->bw, ch - 2 * c->bw - m->gappx, 0);	
+		resize(c, m->wx + gappx, cy, cw - 2 * c->bw, ch - 2 * c->bw - m->gappx, 0);
 		index++;
 		cy += HEIGHT(c) + m->gappx;
 	}
 }
 
 void
-overview_grid(Monitor *m) 
+overview_grid(Monitor *m)
 {
 	unsigned int max_col = 5, count = 0, cw = 0, ch = 0, cx = 0, cy = 0, i = 0, row = 0, col = 0, current_col = 0, current_row = 0;
 	Client *c;
@@ -1825,7 +1826,7 @@ overview_grid(Monitor *m)
 		cy = current_row * ch + (current_row + 1) * gappx;
 		current_col++;
 
-		resize(c, cx, cy, cw - 2 * c->bw, ch - 2 * c->bw, 0);	
+		resize(c, cx, cy, cw - 2 * c->bw, ch - 2 * c->bw, 0);
 	}
 }
 
