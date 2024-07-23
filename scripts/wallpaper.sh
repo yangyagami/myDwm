@@ -1,5 +1,7 @@
 #!/bin/bash
 
+IFS=$'\t\n'
+
 # 存储文件名的数组
 file_array=()
 
@@ -15,7 +17,7 @@ do
     # 遍历数组，设置背景图片
     for filename in "${file_array[@]}"; do
 	feh $HOME/Pictures/Wallpapers/$filename --bg-scale
-	sleep 1m
+	sleep 2m
     done
 done
 
