@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # Stop running if we hit an error
 set -e

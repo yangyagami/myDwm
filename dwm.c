@@ -101,6 +101,7 @@ struct Client {
 	Client *snext;
 	Monitor *mon;
 	Window win;
+	Window frame;
 };
 
 typedef struct {
@@ -585,6 +586,12 @@ configure(Client *c)
 	ce.border_width = c->bw;
 	ce.above = None;
 	ce.override_redirect = False;
+	XSendEvent(dpy, c->frame, False, StructureNotifyMask, (XEvent *)&ce);
+
+	ce.x = 0;
+	ce.y = 20;
+	ce.width = c->w;
+	ce.height = c->h - 20;
 	XSendEvent(dpy, c->win, False, StructureNotifyMask, (XEvent *)&ce);
 }
 
@@ -651,8 +658,9 @@ configurerequest(XEvent *e)
 				c->y = m->my + (m->mh / 2 - HEIGHT(c) / 2); /* center in y direction */
 			if ((ev->value_mask & (CWX|CWY)) && !(ev->value_mask & (CWWidth|CWHeight)))
 				configure(c);
-			if (ISVISIBLE(c))
-				XMoveResizeWindow(dpy, c->win, c->x, c->y, c->w, c->h);
+			if (ISVISIBLE(c)) {
+				XMoveResizeWindow(dpy, c->frame ? c->frame : c->win, c->x, c->y, c->w, c->h);
+			}
 		} else
 			configure(c);
 	} else {
@@ -1124,6 +1132,7 @@ manage(Window w, XWindowAttributes *wa)
 	c->bw = borderpx;
 
 	wc.border_width = c->bw;
+
 	XConfigureWindow(dpy, w, CWBorderWidth, &wc);
 	XSetWindowBorder(dpy, w, scheme[SchemeNorm][ColBorder].pixel);
 	configure(c); /* propagates border_width, if size doesn't change */
@@ -1136,8 +1145,10 @@ manage(Window w, XWindowAttributes *wa)
 	grabbuttons(c, 0);
 	if (!c->isfloating)
 		c->isfloating = c->oldstate = trans != None || c->isfixed;
-	if (c->isfloating)
-		XRaiseWindow(dpy, c->win);
+	if (c->isfloating) {
+		// TODO(yangsiyu): Handle this situation.
+		XRaiseWindow(dpy, c->frame ? c->frame : c->win);
+	}
 	attach(c);
 	attachstack(c);
 	XChangeProperty(dpy, root, netatom[NetClientList], XA_WINDOW, 32, PropModeAppend,
@@ -1148,7 +1159,38 @@ manage(Window w, XWindowAttributes *wa)
 		unfocus(selmon->sel, 0);
 	c->mon->sel = c;
 	arrange(c->mon);
+
+	// Create frame win. We do this after arrange.
+	int title_frame_height = 20;
+	XSetWindowAttributes tmp_wa = {
+		.override_redirect = True,
+		.background_pixel = 0,
+		.border_pixel = 0,
+		.colormap = cmap,
+		.event_mask = ButtonPressMask|ExposureMask|PointerMotionMask
+	};
+	c->frame = XCreateWindow(dpy, root,
+				 c->x, c->y, c->w, c->h, 0, depth,
+				 InputOutput, visual,
+				 CWOverrideRedirect|CWBackPixel|CWBorderPixel|CWColormap|CWEventMask, &tmp_wa);
+	XMapRaised(dpy, c->frame);
+
+	drw_setscheme(drw, scheme[SchemeSel]);
+	drw_rect(drw, 0, 0, c->w, title_frame_height, 1, 1);
+	drw_text(drw,
+		 0, 0, TEXTW(c->name), title_frame_height,
+		 lrpad / 2, c->name, 0);
+	drw_map(drw, c->frame, 0, 0, c->w, title_frame_height);
+
+	XReparentWindow(dpy, c->win, c->frame, 0, title_frame_height);
+
+	XMoveResizeWindow(dpy,
+			  c->win, 0, title_frame_height,
+			  c->w, c->h - title_frame_height);
+
+	XMapWindow(dpy, c->frame);
 	XMapWindow(dpy, c->win);
+
 	focus(NULL);
 }
 
@@ -1388,7 +1430,21 @@ resizeclient(Client *c, int x, int y, int w, int h)
 	c->oldw = c->w; c->w = wc.width = w;
 	c->oldh = c->h; c->h = wc.height = h;
 	wc.border_width = c->bw;
+
+	XMoveResizeWindow(dpy, c->frame, c->x, c->y, c->w, c->h);
+	drw_setscheme(drw, scheme[SchemeSel]);
+	drw_rect(drw, 0, 0, c->w, 20, 1, 1);
+	drw_text(drw,
+		 0, 0, TEXTW(c->name), 20,
+		 lrpad / 4, c->name, 0);
+	drw_map(drw, c->frame, 0, 0, c->w, 20);
+
+	wc.x = 0;
+	wc.y = 20;
+	wc.width = w;
+	wc.height = h - 20;
 	XConfigureWindow(dpy, c->win, CWX|CWY|CWWidth|CWHeight|CWBorderWidth, &wc);
+
 	configure(c);
 	XSync(dpy, False);
 }
@@ -1461,7 +1517,7 @@ restack(Monitor *m)
 	if (!m->sel)
 		return;
 	if (m->sel->isfloating || !m->lt[m->sellt]->arrange)
-		XRaiseWindow(dpy, m->sel->win);
+		XRaiseWindow(dpy, m->sel->frame ? m->sel->frame : m->sel->win);
 	if (m->lt[m->sellt]->arrange) {
 		wc.stack_mode = Below;
 		wc.sibling = m->barwin;
@@ -1819,14 +1875,15 @@ showhide(Client *c)
 		return;
 	if (ISVISIBLE(c)) {
 		/* show clients top down */
-		XMoveWindow(dpy, c->win, c->x, c->y);
+		XMoveWindow(dpy, c->frame, c->x, c->y);
 		if ((!c->mon->lt[c->mon->sellt]->arrange || c->isfloating) && !c->isfullscreen)
 			resize(c, c->x, c->y, c->w, c->h, 0);
 		showhide(c->snext);
 	} else {
 		/* hide clients bottom up */
 		showhide(c->snext);
-		XMoveWindow(dpy, c->win, WIDTH(c) * -2, c->y);
+		XMoveWindow(dpy, c->frame, WIDTH(c) * -2, c->y);
+		// XMoveWindow(dpy, c->win, 0, 20);
 	}
 }
 
@@ -2040,6 +2097,7 @@ unmanage(Client *c, int destroyed)
 		XSetErrorHandler(xerror);
 		XUngrabServer(dpy);
 	}
+	XDestroyWindow(dpy, c->frame);
 	free(c);
 	focus(NULL);
 	updateclientlist();

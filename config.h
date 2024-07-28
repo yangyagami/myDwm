@@ -5,7 +5,7 @@
 #include <X11/X.h>
 static const unsigned int bargap     	= 10;        /* gap pixel between windows */
 static const unsigned int gappx     	= 10;        /* gap pixel between windows */
-static const unsigned int borderpx  	= 3;        /* border pixel of windows */
+static const unsigned int borderpx  	= 0;        /* border pixel of windows */
 static const unsigned int snap      	= 32;       /* snap pixel */
 static const int showbar            	= 1;        /* 0 means no bar */
 static const int topbar             	= 1;        /* 0 means bottom bar */
@@ -39,6 +39,9 @@ static const char col_darkborder[] = "#1E222B";
 static const char col_darkfgSel[] = "#83A4C7";
 static const char col_darkbgSel[] = "#282C37";
 static const char col_darkborderSel[] = "#83A4C7";
+
+/* window frame theme */
+static const char col_background[] = "#FFFFFF";
 
 /*status theme*/
 static const char *status_colors[][3] = {
