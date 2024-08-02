@@ -3,6 +3,8 @@
 
 /* appearance */
 #include <X11/X.h>
+static const uint8_t enable_frame       = 1;
+static const int title_bar_height       = 20;
 static const unsigned int bargap     	= 10;        /* gap pixel between windows */
 static const unsigned int gappx     	= 10;        /* gap pixel between windows */
 static const unsigned int borderpx  	= 0;        /* border pixel of windows */

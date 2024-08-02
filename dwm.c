@@ -46,6 +46,20 @@
 #include "drw.h"
 #include "util.h"
 
+#ifdef ENABLE_LOG
+
+#define DWM_LOG_INFO(x, ...) fprintf(stdout, "\033[37mINFO [%s][%s][%d]: " x "\033[0m\n", __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__)
+#define DWM_LOG_WARN(x, ...) fprintf(stderr, "\033[33mWARN [%s][%s][%d]: " x "\033[0m\n", __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__)
+#define DWM_LOG_ERROR(x, ...) fprintf(stderr, "\033[31mERROR [%s][%s][%d]: " x "\033[0m\n", __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__)
+
+#else
+
+#define DWM_LOG_INFO(x, ...)
+#define DWM_LOG_WARN(x, ...)
+#define DWM_LOG_ERROR(x, ...)
+
+#endif
+
 /* macros */
 #define BUTTONMASK              (ButtonPressMask|ButtonReleaseMask)
 #define CLEANMASK(mask)         (mask & ~(numlockmask|LockMask) & (ShiftMask|ControlMask|Mod1Mask|Mod2Mask|Mod3Mask|Mod4Mask|Mod5Mask))
@@ -573,26 +587,35 @@ clientmessage(XEvent *e)
 void
 configure(Client *c)
 {
+	if (!c) return;
+
 	XConfigureEvent ce;
+
+	DWM_LOG_INFO(
+		"\n\t Client: %p\n"
+		"\t   window id: %d\n"
+		"\t   width: %d\n"
+		"\t   height: %d\n"
+		"\t   x: %d\n"
+		"\t   y: %d\n",
+		c, c->win, c->w, c->h, c->x, c->y);
+
+	int local_title_bar_height = 0;
 
 	ce.type = ConfigureNotify;
 	ce.display = dpy;
 	ce.event = c->win;
 	ce.window = c->win;
-	ce.x = c->x;
-	ce.y = c->y;
+	ce.x = c->frame ? 0 : c->x;
+	ce.y = c->frame ? local_title_bar_height : c->y;
 	ce.width = c->w;
-	ce.height = c->h;
-	ce.border_width = c->bw;
+	ce.height = c->frame ? c->h - local_title_bar_height : c->h;
+	ce.border_width = c->frame ? 0 : c->bw;
 	ce.above = None;
 	ce.override_redirect = False;
-	XSendEvent(dpy, c->frame, False, StructureNotifyMask, (XEvent *)&ce);
-
-	ce.x = 0;
-	ce.y = 20;
-	ce.width = c->w;
-	ce.height = c->h - 20;
 	XSendEvent(dpy, c->win, False, StructureNotifyMask, (XEvent *)&ce);
+
+	XSync(dpy, False);
 }
 
 void
@@ -631,7 +654,18 @@ configurerequest(XEvent *e)
 	XConfigureRequestEvent *ev = &e->xconfigurerequest;
 	XWindowChanges wc;
 
-	if ((c = wintoclient(ev->window))) {
+	c = wintoclient(ev->window);
+
+	DWM_LOG_INFO(
+		"\n\t Client: %p\n"
+		"\t   window id: %d\n"
+		"\t   width: %d\n"
+		"\t   height: %d\n"
+		"\t   x: %d\n"
+		"\t   y: %d\n",
+		c, ev->window, ev->width, ev->height, ev->x, ev->y);
+
+	if (c) {
 		if (ev->value_mask & CWBorderWidth)
 			c->bw = ev->border_width;
 		else if (c->isfloating || !selmon->lt[selmon->sellt]->arrange) {
@@ -661,8 +695,9 @@ configurerequest(XEvent *e)
 			if (ISVISIBLE(c)) {
 				XMoveResizeWindow(dpy, c->frame ? c->frame : c->win, c->x, c->y, c->w, c->h);
 			}
-		} else
+		} else {
 			configure(c);
+		}
 	} else {
 		wc.x = ev->x;
 		wc.y = ev->y;
@@ -700,6 +735,8 @@ destroynotify(XEvent *e)
 {
 	Client *c;
 	XDestroyWindowEvent *ev = &e->xdestroywindow;
+
+	DWM_LOG_INFO("Destory window: %d\n", ev->window);
 
 	if ((c = wintoclient(ev->window)))
 		unmanage(c, 1);
@@ -841,6 +878,16 @@ expose(XEvent *e)
 {
 	Monitor *m;
 	XExposeEvent *ev = &e->xexpose;
+
+	DWM_LOG_INFO(
+		"\n\t Window expose!!\n"
+		"\t   Window: %d\n"
+		"\t   Width: %d\n"
+		"\t   Height: %d\n"
+		"\t   X: %d\n"
+		"\t   Y: %d\n",
+		ev->window, ev->width, ev->height, ev->x, ev->y
+		);
 
 	if (ev->count == 0 && (m = wintomon(ev->window)))
 		drawbar(m);
@@ -1108,9 +1155,45 @@ manage(Window w, XWindowAttributes *wa)
 	/* geometry */
 	c->x = c->oldx = wa->x;
 	c->y = c->oldy = wa->y;
-	c->w = c->oldw = wa->width;
-	c->h = c->oldh = wa->height;
+	c->w = c->oldw = wa->width + 50;
+	c->h = c->oldh = wa->height + 50;
 	c->oldbw = wa->border_width;
+
+	if (enable_frame) {
+		// Create frame win.
+		c->frame = XCreateSimpleWindow(
+			dpy,
+			root,
+			wa->x,
+			wa->y,
+			wa->width,
+			wa->height,
+			wa->border_width,
+		        0,
+		        0);
+
+		XSelectInput(
+			dpy,
+			c->frame,
+			SubstructureRedirectMask | SubstructureNotifyMask);
+
+
+		XReparentWindow(dpy, c->win, c->frame, 0, 0);
+
+		XMoveResizeWindow(dpy,
+				  c->win, 0, 0,
+				  c->w, c->h);
+	}
+
+	DWM_LOG_INFO(
+		"\n\t Client: %p\n"
+		"\t   window id: %d\n"
+		"\t   frame id: %d\n"
+		"\t   width: %d\n"
+		"\t   height: %d\n"
+		"\t   x: %d\n"
+		"\t   y: %d\n",
+		c, w, c->frame, c->w, c->h, c->x, c->y);
 
 	updatetitle(c);
 	if (XGetTransientForHint(dpy, w, &trans) && (t = wintoclient(trans))) {
@@ -1133,15 +1216,15 @@ manage(Window w, XWindowAttributes *wa)
 
 	wc.border_width = c->bw;
 
-	XConfigureWindow(dpy, w, CWBorderWidth, &wc);
-	XSetWindowBorder(dpy, w, scheme[SchemeNorm][ColBorder].pixel);
+	XConfigureWindow(dpy, c->frame ? c->frame : w, CWBorderWidth, &wc);
+	XSetWindowBorder(dpy, c->frame ? c->frame : w, scheme[SchemeNorm][ColBorder].pixel);
 	configure(c); /* propagates border_width, if size doesn't change */
 	updatewindowtype(c);
 	updatesizehints(c);
 	updatewmhints(c);
 	c->x = c->mon->mx + (c->mon->mw - WIDTH(c)) / 2;
 	c->y = c->mon->my + (c->mon->mh - HEIGHT(c)) / 2;
-	XSelectInput(dpy, w, EnterWindowMask|FocusChangeMask|PropertyChangeMask|StructureNotifyMask);
+	XSelectInput(dpy, c->frame ? c->frame : w, EnterWindowMask|FocusChangeMask|PropertyChangeMask|StructureNotifyMask);
 	grabbuttons(c, 0);
 	if (!c->isfloating)
 		c->isfloating = c->oldstate = trans != None || c->isfixed;
@@ -1153,45 +1236,19 @@ manage(Window w, XWindowAttributes *wa)
 	attachstack(c);
 	XChangeProperty(dpy, root, netatom[NetClientList], XA_WINDOW, 32, PropModeAppend,
 		(unsigned char *) &(c->win), 1);
-	XMoveResizeWindow(dpy, c->win, c->x + 2 * sw, c->y, c->w, c->h); /* some windows require this */
+	XMoveResizeWindow(dpy, c->frame ? c->frame : c->win, c->x + 2 * sw, c->y, c->w, c->h);
+	// XMoveResizeWindow(dpy, c->win, c->x + 2 * sw, c->y, c->w, c->h); /* some windows require this */
 	setclientstate(c, NormalState);
 	if (c->mon == selmon)
 		unfocus(selmon->sel, 0);
 	c->mon->sel = c;
 	arrange(c->mon);
+	focus(NULL);
 
-	// Create frame win. We do this after arrange.
-	int title_frame_height = 20;
-	XSetWindowAttributes tmp_wa = {
-		.override_redirect = True,
-		.background_pixel = 0,
-		.border_pixel = 0,
-		.colormap = cmap,
-		.event_mask = ButtonPressMask|ExposureMask|PointerMotionMask
-	};
-	c->frame = XCreateWindow(dpy, root,
-				 c->x, c->y, c->w, c->h, 0, depth,
-				 InputOutput, visual,
-				 CWOverrideRedirect|CWBackPixel|CWBorderPixel|CWColormap|CWEventMask, &tmp_wa);
-	XMapRaised(dpy, c->frame);
-
-	drw_setscheme(drw, scheme[SchemeSel]);
-	drw_rect(drw, 0, 0, c->w, title_frame_height, 1, 1);
-	drw_text(drw,
-		 0, 0, TEXTW(c->name), title_frame_height,
-		 lrpad / 2, c->name, 0);
-	drw_map(drw, c->frame, 0, 0, c->w, title_frame_height);
-
-	XReparentWindow(dpy, c->win, c->frame, 0, title_frame_height);
-
-	XMoveResizeWindow(dpy,
-			  c->win, 0, title_frame_height,
-			  c->w, c->h - title_frame_height);
-
-	XMapWindow(dpy, c->frame);
+	if (c->frame) XMapWindow(dpy, c->frame);
 	XMapWindow(dpy, c->win);
 
-	focus(NULL);
+	XSync(dpy, False);
 }
 
 void
@@ -1425,25 +1482,29 @@ resizeclient(Client *c, int x, int y, int w, int h)
 {
 	XWindowChanges wc;
 
+	DWM_LOG_INFO(
+		"\n\t Client: %p\n"
+		"\t   window id: %d\n"
+		"\t   width: %d\n"
+		"\t   height: %d\n"
+		"\t   x: %d\n"
+		"\t   y: %d\n",
+		c, c->win, w, h, x, y);
+
 	c->oldx = c->x; c->x = wc.x = x;
 	c->oldy = c->y; c->y = wc.y = y;
 	c->oldw = c->w; c->w = wc.width = w;
 	c->oldh = c->h; c->h = wc.height = h;
 	wc.border_width = c->bw;
 
-	XMoveResizeWindow(dpy, c->frame, c->x, c->y, c->w, c->h);
-	drw_setscheme(drw, scheme[SchemeSel]);
-	drw_rect(drw, 0, 0, c->w, 20, 1, 1);
-	drw_text(drw,
-		 0, 0, TEXTW(c->name), 20,
-		 lrpad / 4, c->name, 0);
-	drw_map(drw, c->frame, 0, 0, c->w, 20);
+	if (c->frame) {
+		XConfigureWindow(dpy, c->frame, CWX|CWY|CWWidth|CWHeight|CWBorderWidth, &wc);
 
-	wc.x = 0;
-	wc.y = 20;
-	wc.width = w;
-	wc.height = h - 20;
-	XConfigureWindow(dpy, c->win, CWX|CWY|CWWidth|CWHeight|CWBorderWidth, &wc);
+
+		XMoveResizeWindow(dpy, c->win, 0, 0, c->w, c->h);
+	} else {
+		XConfigureWindow(dpy, c->win, CWX|CWY|CWWidth|CWHeight|CWBorderWidth, &wc);
+	}
 
 	configure(c);
 	XSync(dpy, False);
@@ -1523,7 +1584,7 @@ restack(Monitor *m)
 		wc.sibling = m->barwin;
 		for (c = m->stack; c; c = c->snext)
 			if (!c->isfloating && ISVISIBLE(c)) {
-				XConfigureWindow(dpy, c->win, CWSibling|CWStackMode, &wc);
+				XConfigureWindow(dpy, c->frame ? c->frame : c->win, CWSibling|CWStackMode, &wc);
 				wc.sibling = c->win;
 			}
 	}
@@ -1537,9 +1598,10 @@ run(void)
 	XEvent ev;
 	/* main event loop */
 	XSync(dpy, False);
-	while (running && !XNextEvent(dpy, &ev))
+	while (running && !XNextEvent(dpy, &ev)) {
 		if (handler[ev.type])
 			handler[ev.type](&ev); /* call handler */
+	}
 }
 
 void
@@ -1873,16 +1935,19 @@ showhide(Client *c)
 {
 	if (!c)
 		return;
+
+	DWM_LOG_INFO("Client: %p, window id: %d, frame id: %d", c, c->win, c->frame);
+
 	if (ISVISIBLE(c)) {
 		/* show clients top down */
-		XMoveWindow(dpy, c->frame, c->x, c->y);
+		XMoveWindow(dpy, c->frame ? c->frame : c->win, c->x, c->y);
 		if ((!c->mon->lt[c->mon->sellt]->arrange || c->isfloating) && !c->isfullscreen)
 			resize(c, c->x, c->y, c->w, c->h, 0);
 		showhide(c->snext);
 	} else {
 		/* hide clients bottom up */
 		showhide(c->snext);
-		XMoveWindow(dpy, c->frame, WIDTH(c) * -2, c->y);
+		XMoveWindow(dpy, c->frame ? c->frame : c->win, WIDTH(c) * -2, c->y);
 		// XMoveWindow(dpy, c->win, 0, 20);
 	}
 }
@@ -2081,6 +2146,8 @@ unfocus(Client *c, int setfocus)
 void
 unmanage(Client *c, int destroyed)
 {
+	DWM_LOG_INFO("Client: %p", c);
+
 	Monitor *m = c->mon;
 	XWindowChanges wc;
 
@@ -2097,7 +2164,12 @@ unmanage(Client *c, int destroyed)
 		XSetErrorHandler(xerror);
 		XUngrabServer(dpy);
 	}
-	XDestroyWindow(dpy, c->frame);
+	if (c->frame) {
+		XUnmapWindow(dpy, c->frame);
+		XDestroyWindow(dpy, c->frame);
+
+		XSync(dpy, False);
+	}
 	free(c);
 	focus(NULL);
 	updateclientlist();
@@ -2518,3 +2590,7 @@ main(int argc, char *argv[])
 	XCloseDisplay(dpy);
 	return EXIT_SUCCESS;
 }
+
+#undef DWM_LOG_INFO
+#undef DWM_LOG_WARN
+#undef DWM_LOG_ERROR
