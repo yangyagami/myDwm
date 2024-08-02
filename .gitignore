@@ -15,3 +15,7 @@ dwm.c.rej
 dwm.o
 test.sh
 test.txt
+*.o
+dwm
+*.rej
+*.orig
